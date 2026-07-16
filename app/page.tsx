@@ -3,7 +3,7 @@
 export default function Home() {
   return (
    <div>
-    hello next js
+    hello next js how are you doing
    </div>
   );
 }
