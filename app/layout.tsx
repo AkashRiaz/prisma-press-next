@@ -1,3 +1,4 @@
+import Link from "next/link";
 import "./globals.css";
 
 export default function RootLayout({
@@ -8,7 +9,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={` h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        Navbar
+        <Link href="/">Home</Link>
+        <Link href="/blogs">Blogs</Link>
         {children}
       </body>
     </html>
