@@ -1,5 +1,10 @@
-import Link from "next/link";
+
 import "./globals.css";
+import { Inter } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const inter = Inter({subsets:['latin'],variable:'--font-sans'});
+
 
 export default function RootLayout({
   children,
@@ -7,10 +12,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={` h-full antialiased`}>
+    <html lang="en" className={cn("h-full", "antialiased", "font-sans", inter.variable)}>
       <body className="min-h-full flex flex-col">
-        <Link href="/">Home</Link>
-        <Link href="/blogs">Blogs</Link>
         {children}
       </body>
     </html>
