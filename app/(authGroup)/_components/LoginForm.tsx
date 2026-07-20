@@ -6,15 +6,19 @@ import { Input } from "@/components/ui/input";
 import { loginActions } from "../_actions/authActions";
 import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
+// import { useRouter } from "next/navigation";
 
 const LoginForm = () => {
   const [state, formAction, loading] = useActionState(loginActions, false);
+
+  // const router = useRouter();
 
   useEffect(() => {
     if (!state) return;
 
     if (state.success) {
       toast.success(state.message || "Login successful");
+      // router.push("/dashboard");
     }
     if (!state.success) {
       toast.error(state.message || "Something went wrong");
