@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import jwt from "jsonwebtoken";
 
 type LoginState = {
   success: boolean;
@@ -47,7 +48,22 @@ export const loginActions = async (
       sameSite: "lax",
     });
 
-    redirect("/dashboard");
+    const decodedToken = jwt.decode(result.data.accessToken);
+    console.log(decodedToken, "decodedToken");
+
+    if(decodedToken && typeof decodedToken === "object" && "role" in decodedToken) {
+      const userRole = decodedToken.role;
+      if (userRole === "ADMIN") {
+        redirect("/admin-dashboard");
+      } else if (userRole === "AUTHOR") {
+        redirect("/author-dashboard");
+      }else if (userRole === "USER") {
+        redirect("/dashboard");
+      }
+       else {
+        redirect("/home");
+      }
+    }
   }
   // console.log(result);
   return result;

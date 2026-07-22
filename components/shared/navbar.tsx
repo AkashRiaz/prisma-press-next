@@ -25,7 +25,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { logout } from "@/service/logout";
-import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -80,6 +79,7 @@ export function Navbar({ user }: NavbarProps) {
       router.push("/login");
     }
   };
+
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background">
