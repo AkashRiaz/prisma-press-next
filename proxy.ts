@@ -1,42 +1,105 @@
 // import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import { JwtPayload } from "jsonwebtoken";
+import { jwtUtils } from "./utils/jwt";
+import { getNewAccessToken } from "./service/refreshToken";
+import { cookies } from "next/headers";
 
-const AUTH_ROUTES = [
-  "/login",
-  "/register",
-];
+const AUTH_ROUTES = ["/login", "/register"];
+
+const PUBLIC_ROUTES = ["/", "/news", ];
 
 // This function can be marked `async` if using `await` inside
 export async function proxy(request: NextRequest) {
   const pathName = request.nextUrl.pathname;
 
-  // const cookieStore = await cookies();
+  const cookieStore = await cookies();
 
   // const accessToken = cookieStore.get('access_token')?.value;
 
-  const accessToken = request.cookies.get("accessToken")?.value;
+  let accessToken = request.cookies.get("accessToken")?.value;
+  // console.log(accessToken, "accessToken-----");
+  const refreshToken = request.cookies.get("refreshToken")?.value;
 
-  const decodedToken = accessToken
-    ? (jwt.decode(accessToken) as JwtPayload)
+  let decodedAccessToken = accessToken
+    ? jwtUtils.verifyToken(accessToken, process.env.JWT_ACCESS_SECRET as string)
     : null;
 
-  let userRole = null;
-  if (decodedToken) {
-    userRole = decodedToken.role;
+  // console.log(decodedAccessToken, "decodedAccessToken");
+
+  const decodedRefreshToken = refreshToken
+    ? jwtUtils.verifyToken(
+        refreshToken,
+        process.env.JWT_REFRESH_SECRET as string,
+      )
+    : null;
+
+  if (!decodedAccessToken?.success && decodedRefreshToken?.success) {
+    const result = await getNewAccessToken();
+
+    if (result.success && result.data) {
+      const newAccessToken = result.data.accessToken;
+      // console.log(newAccessToken, "newAccessToken");
+      cookieStore.set("accessToken", newAccessToken, {
+        httpOnly: true,
+        maxAge: 60 * 60 * 24, // 1 day
+        sameSite: "lax",
+      });
+
+      accessToken = newAccessToken;
+      decodedAccessToken = jwtUtils.verifyToken(
+        accessToken!,
+        process.env.JWT_ACCESS_SECRET as string,
+      );
+    }
   }
 
-  if(accessToken && AUTH_ROUTES.includes(pathName)) {
-   if(userRole === "ADMIN") {
-    return NextResponse.redirect(new URL("/admin-dashboard", request.url));
-    } else if(userRole === "AUTHOR") {
+  let userRole = null;
+
+  // console.log(decodedAccessToken?.success, "decodedAccessToken?.success");
+
+  if (!decodedAccessToken?.success) {
+    cookieStore.delete("accessToken");
+  }
+
+  if (decodedAccessToken?.success && decodedAccessToken.data) {
+    userRole = (decodedAccessToken.data as JwtPayload).role;
+  }
+
+  if (accessToken && AUTH_ROUTES.includes(pathName)) {
+    if (userRole === "ADMIN") {
+      return NextResponse.redirect(new URL("/admin-dashboard", request.url));
+    } else if (userRole === "AUTHOR") {
       return NextResponse.redirect(new URL("/author-dashboard", request.url));
-    }else if(userRole === "USER") {
+    } else if (userRole === "USER") {
       return NextResponse.redirect(new URL("/dashboard", request.url));
-    }else {
+    } else {
       return NextResponse.redirect(new URL("/", request.url));
     }
+  }
+
+  const isPublicRoute = PUBLIC_ROUTES.some(
+    (route) => pathName === route || pathName.startsWith(route + "/"),
+  );
+
+  const isAuthRoute = AUTH_ROUTES.some(
+    (route) => pathName === route || pathName.startsWith(route + "/"),
+  );
+
+  if (!accessToken && !isPublicRoute && !isAuthRoute) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  if (pathName.startsWith("/dashboard") && userRole !== "USER") {
+    return NextResponse.redirect(new URL("/not-found", request.url));
+  } else if (pathName.startsWith("/admin-dashboard") && userRole !== "ADMIN") {
+    return NextResponse.redirect(new URL("/not-found", request.url));
+  } else if (
+    pathName.startsWith("/author-dashboard") &&
+    userRole !== "AUTHOR"
+  ) {
+    return NextResponse.redirect(new URL("/not-found", request.url));
   }
 
   return NextResponse.next();
@@ -46,9 +109,9 @@ export async function proxy(request: NextRequest) {
 // export default function proxy(request: NextRequest) { ... }
 
 export const config = {
-    matcher: [
-        // '/dashboard/:path*',
-        // '/admin-dashboard/:path*',
-        '/((?!api|_next/static|favicon.ico|_next/image|.*\\.png$).*)'
-    ],
-}
+  matcher: [
+    // '/dashboard/:path*',
+    // '/admin-dashboard/:path*',
+    "/((?!api|_next/static|favicon.ico|_next/image|.*\\.png$).*)",
+  ],
+};
